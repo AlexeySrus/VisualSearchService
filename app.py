@@ -55,49 +55,49 @@ def build_histogram(descriptor_list, cluster_alg):
     return _h / np.linalg.norm(_h)
 
 
+def find_in_base(img: Image) -> tuple:
+    features = build_histogram(
+        extract_features(np.array(img)),
+        cluster_model
+    )
+
+    pymilvus.connections.connect(
+        "default", host='localhost', port=19530)
+
+    collection_name = 'SimilaritySearchSIFT'
+
+    milvus_collection = pymilvus.Collection(collection_name)
+    milvus_collection.load()
+
+    search_params = {"metric_type": "IP", "params": {}}
+    query_vectors = [features.astype(np.float32).tolist()]
+    search_results = milvus_collection.search(
+        query_vectors,
+        'embeddings',
+        param=search_params,
+        limit=5,
+        expr=None
+    )
+
+    indexes = search_results[0].ids
+    distances = search_results[0].distances
+
+    return indexes, distances
+
+
 def base_search():
     st.title('Similarity search Demo')
     uploaded_file = st.file_uploader(
         'Choose an image...',
         type=['png', 'jpg', 'jpeg', 'webp']
     )
-
     if uploaded_file is not None:
         try:
             image = Image.open(uploaded_file).convert('RGB')
             image = ImageOps.exif_transpose(image)
+            st.image(image, caption='Input image')
 
-            st.image(
-                image,
-                caption='Input image'
-            )
-
-            features = build_histogram(
-                extract_features(np.array(image)),
-                cluster_model
-            )
-
-            pymilvus.connections.connect(
-                "default", host='localhost', port=19530)
-
-            collection_name = 'SimilaritySearchSIFT'
-
-            milvus_collection = pymilvus.Collection(collection_name)
-            milvus_collection.load()
-
-            search_params = {"metric_type": "IP", "params": {}}
-            query_vectors = [features.astype(np.float32).tolist()]
-            search_results = milvus_collection.search(
-                query_vectors,
-                'embeddings',
-                param=search_params,
-                limit=5,
-                expr=None
-            )
-
-            indexes = search_results[0].ids
-            distances = search_results[0].distances
-
+            indexes, distances = find_in_base(img)
             for idx, d in zip(indexes, distances):
                 image_path = base_paths_keys[idx]
                 st.image(
