@@ -97,7 +97,7 @@ def base_search():
             image = ImageOps.exif_transpose(image)
             st.image(image, caption='Input image')
 
-            indexes, distances = find_in_base(img)
+            indexes, distances = find_in_base(image)
             for idx, d in zip(indexes, distances):
                 image_path = base_paths_keys[idx]
                 st.image(
